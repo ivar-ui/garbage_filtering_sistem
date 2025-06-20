@@ -7,98 +7,74 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <title>Data Sampah</title>
   <style>
-    canvas {
-      width: 100% !important;
-      height: 100% !important;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
   </style>
 </head>
-<body class="bg-[#0f172a] text-white min-h-screen p-6">
-  <div class="w-full max-w-6xl mx-auto">
-    <h1 class="text-3xl font-bold text-center mb-8">📊 Data Sampah</h1>
+<body class="bg-[#0f172a] text-white min-h-screen flex">
 
-    <!-- TABEL -->
-    <div class="overflow-x-auto rounded-lg shadow-lg mb-12">
-      <table class="w-full text-sm text-left border-collapse">
-        <thead class="bg-[#1e293b] text-white">
-          <tr>
-            <th class="px-4 py-3 border-b border-gray-600">ID</th>
-            <th class="px-4 py-3 border-b border-gray-600">Jenis</th>
-            <th class="px-4 py-3 border-b border-gray-600">Kelembapan</th>
-            <th class="px-4 py-3 border-b border-gray-600">Waktu</th>
-          </tr>
-        </thead>
-        <tbody>
-          @php
-            $latestTen = $wasteData->sortByDesc('created_at')->take(10);
-          @endphp
-          @forelse ($latestTen as $data)
-          <tr class="hover:bg-[#334155] transition">
-            <td class="px-4 py-2 border-b border-gray-700">{{ $data->id }}</td>
-            <td class="px-4 py-2 border-b border-gray-700">{{ $data->jenis }}</td>
-            <td class="px-4 py-2 border-b border-gray-700">{{ round($data->kelembapan) }}%</td>
-            <td class="px-4 py-2 border-b border-gray-700">{{ $data->created_at }}</td>
-          </tr>
-          @empty
-          <tr>
-            <td colspan="4" class="px-4 py-3 text-center text-gray-400">Tidak ada data tersedia.</td>
-          </tr>
-          @endforelse
-        </tbody>
-      </table>
-    </div>
+  <!-- SIDEBAR -->
+  <aside class="w-64 bg-[#1e293b] p-6 flex flex-col gap-6 min-h-screen shadow-xl">
+    <div class="text-2xl font-bold mb-6">Dashboard</div>
+    <nav class="flex flex-col gap-3">
+      <a href="{{ route('data.sampah') }}" class="bg-[#334155] px-4 py-2 rounded-lg font-semibold transition">Beranda</a>
+      <a href="{{ route('detail.sampah') }}" class="hover:bg-[#334155] px-4 py-2 rounded-lg transition">Detail Sampah</a>
+      <a href="{{ route('riwayat.sensor') }}" class="hover:bg-[#334155] px-4 py-2 rounded-lg transition">Riwayat Sensor</a>
+    </nav>
+  </aside>
 
-    <!-- CHARTS + Total Info -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 items-start">
-      <!-- Info Total -->
-      <div class="bg-[#1e293b] p-6 rounded-lg shadow-lg md:col-span-1">
-        <h2 class="text-lg font-semibold mb-4">🔢 Total Data</h2>
-        <p class="text-5xl font-bold text-green-400">{{ count($wasteData) }}</p>
-        <p class="mt-2 text-gray-400">Data yang tersimpan di database.</p>
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 p-6">
+    <h1 class="text-3xl font-bold text-center mb-8">Data Sampah</h1>
+
+    <!-- Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+      <div class="bg-[#1e293b] p-6 rounded-lg shadow-lg text-center">
+        <h2 class="text-lg font-semibold mb-2">Total Data</h2>
+        <p class="text-5xl font-bold text-green-400" id="totalData">0</p>
+        <p class="text-gray-400 text-sm mt-2">Data tersimpan</p>
       </div>
-
-      <!-- Diagram Batang -->
-      <div class="bg-[#1e293b] p-6 rounded-lg shadow-lg md:col-span-2 h-[300px]">
-        <h2 class="text-xl font-semibold mb-4 text-center">Jumlah Jenis Sampah</h2>
-        <canvas id="barChart"></canvas>
+      <div class="bg-[#1e293b] p-6 rounded-lg shadow-lg text-center">
+        <h2 class="text-lg font-semibold mb-2">Sampah Kering</h2>
+        <p class="text-5xl font-bold text-blue-400" id="jumlahKering">0</p>
+        <p class="text-gray-400 text-sm mt-2">Jumlah data kering</p>
+      </div>
+      <div class="bg-[#1e293b] p-6 rounded-lg shadow-lg text-center">
+        <h2 class="text-lg font-semibold mb-2">Sampah Basah</h2>
+        <p class="text-5xl font-bold text-emerald-400" id="jumlahBasah">0</p>
+        <p class="text-gray-400 text-sm mt-2">Jumlah data basah</p>
+      </div>
+      <div class="bg-[#1e293b] p-6 rounded-lg shadow-lg text-center">
+        <h2 class="text-lg font-semibold mb-2">Sampah Logam</h2>
+        <p class="text-5xl font-bold text-yellow-400" id="jumlahLogam">0</p>
+        <p class="text-gray-400 text-sm mt-2">Jumlah data logam</p>
       </div>
     </div>
-  </div>
 
-  <!-- Script -->
+    <!-- CHART -->
+    <div class="bg-[#1e293b] p-6 rounded-lg shadow-lg h-[300px]">
+      <h2 class="text-xl font-semibold mb-4 text-center">Diagram Jumlah Jenis Sampah</h2>
+      <canvas id="barChart"></canvas>
+    </div>
+  </main>
+
+  <!-- CHART SCRIPT -->
   <script>
-    let wasteData = {!! json_encode($wasteData) !!};
+    const ctx = document.getElementById("barChart").getContext("2d");
 
-    // Ambil 10 data terbaru
-    wasteData = wasteData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10).reverse();
-
-    const countDataByJenis = { kering: 0, basah: 0, logam: 0 };
-
-    wasteData.forEach(item => {
-      const jenis = item.jenis.toLowerCase();
-      if (countDataByJenis[jenis] !== undefined) {
-        countDataByJenis[jenis]++;
-      }
-    });
-
-    // Bar Chart
-    new Chart(document.getElementById("barChart"), {
+    const chart = new Chart(ctx, {
       type: "bar",
       data: {
         labels: ["Kering", "Basah", "Logam"],
         datasets: [{
-          label: 'Jumlah',
-          data: [
-            Math.round(countDataByJenis.kering),
-            Math.round(countDataByJenis.basah),
-            Math.round(countDataByJenis.logam)
-          ],
+          label: "Jumlah",
+          data: [0, 0, 0],
           backgroundColor: [
-            'rgba(59, 130, 246, 0.8)',
-            'rgba(16, 185, 129, 0.8)',
-            'rgba(234, 179, 8, 0.8)'
+            "rgba(59, 130, 246, 0.8)",
+            "rgba(16, 185, 129, 0.8)",
+            "rgba(234, 179, 8, 0.8)"
           ],
-          borderColor: '#ffffff50',
+          borderColor: "#ffffff50",
           borderWidth: 1
         }]
       },
@@ -108,19 +84,48 @@
         scales: {
           y: {
             beginAtZero: true,
-            ticks: {
-              color: "white",
-              precision: 0,
-              callback: value => parseInt(value)
-            }
+            ticks: { color: "white", precision: 0 }
           },
-          x: { ticks: { color: "white" } }
+          x: {
+            ticks: { color: "white" }
+          }
         },
         plugins: {
           legend: { labels: { color: "white" } }
         }
       }
     });
+
+    function updateData(data) {
+      let kering = 0, basah = 0, logam = 0;
+      data.forEach(item => {
+        switch (item.jenis.toLowerCase()) {
+          case 'kering': kering++; break;
+          case 'basah': basah++; break;
+          case 'logam': logam++; break;
+        }
+      });
+
+      chart.data.datasets[0].data = [kering, basah, logam];
+      chart.update();
+
+      document.getElementById("totalData").textContent = data.length;
+      document.getElementById("jumlahKering").textContent = kering;
+      document.getElementById("jumlahBasah").textContent = basah;
+      document.getElementById("jumlahLogam").textContent = logam;
+    }
+
+    async function fetchData() {
+      const res = await fetch("/api/waste-latest");
+      const json = await res.json();
+      updateData(json);
+    }
+
+    // Inisialisasi awal
+    fetchData();
+
+    // Polling setiap 5 detik
+    setInterval(fetchData, 5000);
   </script>
 </body>
 </html>
